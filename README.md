@@ -15,6 +15,7 @@ Proyecto de portfolio que simula un caso real de empresa: convertir los viajes d
 |---|---|
 | `N_yellow.ipynb` | Exploración (EDA) de los taxis amarillos con DuckDB |
 | `N_green.ipynb` | Exploración (EDA) de los taxis verdes con DuckDB |
+| `N_bronze.ipynb` | Capa Bronze: carga de un mes de cada tipo de taxi con esquema unificado |
 
 ## Hallazgos principales del EDA
 
@@ -23,6 +24,7 @@ Proyecto de portfolio que simula un caso real de empresa: convertir los viajes d
 - 144.118 viajes (4,1 %) tienen tarifa negativa: unos 62.700 con total también negativo (ajustes y devoluciones) y 81.402 con total positivo, casi todos del tipo 0.
 - 63.037 viajes (1,8 %) tienen `total_amount` negativo.
 - Los viajes con distancia 0 son, en su mayoría, fallos de medición.
+- En el 32 % de los viajes, `total_amount` no coincide con la suma de sus componentes. Las diferencias son siempre importes exactos de tasas (2,50, 1,75, 0,75 y sus combinaciones), registradas de forma distinta según el proveedor. Decisión: usar `total_amount` para los ingresos y descartar el desglose de tasas.
 
 **Taxis verdes**
 - 1.836 viajes (3,8 %) llegan incompletos: `payment_type`, `passenger_count` y otras columnas nulas a la vez. Son viajes reales, más largos y caros, así que se conservan y se marcan.
@@ -47,7 +49,7 @@ Principio: **marcar, no borrar**. Los datos crudos se conservan en Bronze, así 
 | Pasajeros desconocidos | `passenger_unknown` | `passenger_count` nulo, 0 o ≥ 7 | Se conserva la fila; no se usa para análisis de pasajeros |
 | Tipo de pago 0 (Flex Fare) | `payment_type` | `payment_type = 0` | Se muestra aparte; fuera del análisis de propinas |
 
-## Preguntas de negocio (capa Gold)
+### Preguntas de negocio (capa Gold)
 - ¿Dónde y cuándo hay más demanda? (viajes por zona, hora y día de la semana)
 - ¿Qué zonas dan más ingreso por minuto?
 - ¿Dónde acaban los taxis y dónde se necesitan? (flujo neto: recogidas − destinos)
@@ -58,10 +60,21 @@ Principio: **marcar, no borrar**. Los datos crudos se conservan en Bronze, así 
 - ¿Dónde compiten verdes y amarillos? (% de verdes por zona) *(solo verdes)*
 - ¿Se paran en la calle o se despachan? (`trip_type`) *(solo verdes)*
 
+## Capa bronze
+Los datos se guardan tal cual llegan, sin limpiar, pero con la misma estructura para los dos tipos de taxi:
+
+- Nombres de columna en minúsculas y `tpep_`/`lpep_` unificados en `pickup_datetime` y `dropoff_datetime`.
+- Un único esquema de 22 columnas de datos, con las propias de cada tipo de taxi rellenas con nulo en el otro.
+- Columnas de trazabilidad: `taxi_type`, `source_file`, `ingested_at` y `year_month`.
+- Parquet particionado por `taxi_type` y `year_month`.
+
 # Hoja de ruta
 
 (Se irá actualizando al lo largo del proyecto y se pueden incluir más fases)
 - [x] Fase 1: exploración de datos con DuckDB
 - [ ] Fase 2: pipeline Bronze → Silver → Gold con PySpark (un mes de cada tipo de taxi)
+  - [x] Bronze
+  - [ ] Silver
+  - [ ] Gold
 - [ ] Escalar de un mes a un año de datos y medir tiempos
 - [ ] Dashboard con mapa de zonas
