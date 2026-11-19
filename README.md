@@ -1,7 +1,7 @@
 # Análisis de taxis de Nueva York con PySpark
 Proyecto de portfolio que simula un caso real de empresa: convertir los viajes de taxi de Nueva York en tablas listas para decidir **dónde y cuándo hay más demanda** y **qué zonas son más rentables**, comparando taxis amarillos y verdes.
 
-> Estado: **Fase 1 completada (exploración de datos)**. Siguiente: pipeline Bronze → Silver → Gold con PySpark.
+> Estado: **Fases 1 a 4 completadas (exploración, Bronze, Silver y Gold)**. Siguiente: dashboard con mapa de zonas.
 
 ## Datos
 - Fuente: [NYC TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page) (datos públicos, formato Parquet).
@@ -16,6 +16,8 @@ Proyecto de portfolio que simula un caso real de empresa: convertir los viajes d
 | `N_yellow.ipynb` | Exploración (EDA) de los taxis amarillos con DuckDB |
 | `N_green.ipynb` | Exploración (EDA) de los taxis verdes con DuckDB |
 | `N_bronze.ipynb` | Capa Bronze: carga de un mes de cada tipo de taxi con esquema unificado |
+| `N_silver.ipynb` | Capa Silver: limpieza, banderas de calidad y unión con zonas |
+| `N_gold.ipynb` | Capa Gold: tablas agregadas para las preguntas de negocio |
 
 ## Hallazgos principales del EDA
 
@@ -68,13 +70,49 @@ Los datos se guardan tal cual llegan, sin limpiar, pero con la misma estructura 
 - Columnas de trazabilidad: `taxi_type`, `source_file`, `ingested_at` y `year_month`.
 - Parquet particionado por `taxi_type` y `year_month`.
 
+## Capa Silver
+
+Silver parte de Bronze y deja los datos listos para analizar. Principio: **marcar, no borrar**. Solo se eliminan las filas con fecha fuera del mes del fichero; el resto de problemas se marcan en columnas booleanas y cada análisis decide qué excluir. Los umbrales están definidos como constantes en un único sitio.
+
+Resultado: **3.523.494 filas** (3.475.211 amarillos y 48.283 verdes).
+
+| Regla | Columna | Criterio | Verdes | Amarillos |
+|---|---|---|---|---|
+| Fuera de mes (se elimina) | — | Recogida y llegada fuera de M−1→M, M→M o M→M+1 | 43 | 15 |
+| Duplicados | - | Mismo viaje repetido | - | - |
+| Ajuste / devolución | `is_adjustment` | `total_amount < 0` | 153 | 63.037 |
+| Tarifa negativa con total positivo | `fare_unreliable` | `fare_amount < 0` y `total_amount >= 0` | 0 | 81.402 |
+| Distancia no válida | `distance_valid` | `0 < trip_distance < 180` | - | - |
+| Duración no válida | `duration_valid` | `0 < trip_minutes < [MAX_MINUTES]` | - | - |
+| Pasajeros desconocidos | `passenger_unknown` | nulo, 0 o ≥ 7 | - | - |
+| Tipo de pago Flex Fare | `is_flex_fare` | `payment_type = 0` | - | - |
+
+
+## Capa Gold
+
+Tablas agregadas, una por pregunta de negocio, con el tipo de taxi como columna para comparar amarillos y verdes. Todas excluyen los ajustes (`is_adjustment`) y aplican un mínimo de viajes donde hay cocientes o porcentajes.
+
+| Tabla | Pregunta |
+|---|---|
+| `demanda_zona_hora_dia` | ¿Dónde y cuándo hay más demanda? |
+| `ingreso_minuto_zona` | ¿Qué zonas dan más ingreso por minuto? |
+| `flujo_neto_zona_hora` | ¿Dónde acaban los taxis y dónde se necesitan? |
+| `propina_zona` | ¿Qué zonas dan mejor propina? (solo tarjeta) |
+| `pago_zona` | ¿Cómo se paga en cada zona? |
+| `rutas_origen_destino` | ¿Cuáles son las rutas más importantes? |
+| `aeropuertos_viajes_largos` | ¿Cuánto pesan aeropuertos y viajes largos? |
+| `cuota_verde_zona` | ¿Dónde compiten verdes y amarillos? |
+| `tipo_viaje_verdes` | ¿Los verdes se paran en la calle o se despachan? |
+
+
 # Hoja de ruta
 
 (Se irá actualizando al lo largo del proyecto y se pueden incluir más fases)
 - [x] Fase 1: exploración de datos con DuckDB
-- [ ] Fase 2: pipeline Bronze → Silver → Gold con PySpark (un mes de cada tipo de taxi)
+- [x] Fase 2: pipeline Bronze → Silver → Gold con PySpark (un mes de cada tipo de taxi)
   - [x] Bronze
-  - [ ] Silver
-  - [ ] Gold
-- [ ] Escalar de un mes a un año de datos y medir tiempos
+  - [x] Silver
+  - [x] Gold
 - [ ] Dashboard con mapa de zonas
+- [ ] Escalar de un mes a un año de datos y medir tiempos
+
