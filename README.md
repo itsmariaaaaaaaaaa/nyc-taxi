@@ -15,9 +15,9 @@ Proyecto de portfolio que simula un caso real de empresa: convertir los viajes d
 |---|---|
 | `N_yellow.ipynb` | Exploración (EDA) de los taxis amarillos con DuckDB |
 | `N_green.ipynb` | Exploración (EDA) de los taxis verdes con DuckDB |
-| `N_bronze.ipynb` | Capa Bronze: carga de un mes de cada tipo de taxi con esquema unificado |
-| `N_silver.ipynb` | Capa Silver: limpieza, banderas de calidad y unión con zonas |
-| `N_gold.ipynb` | Capa Gold: tablas agregadas para las preguntas de negocio |
+| `Capa bronze.ipynb` | Capa Bronze: carga de un mes de cada tipo de taxi con esquema unificado |
+| `Capa_silver.ipynb` | Capa Silver: limpieza, banderas de calidad y unión con zonas |
+| `Capa_gold.ipynb` | Capa Gold: tablas agregadas para las preguntas de negocio |
 
 ## Hallazgos principales del EDA
 
